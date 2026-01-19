@@ -5,63 +5,111 @@
   <title>Electricity Usage Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="style.css">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-  <header>
-    <h1>⚡ Electricity Usage Dashboard</h1>
-    <p>Electricity consumption and user statistics by province</p>
-  </header>
+<header>
+  <h1>⚡ Electricity Usage Dashboard</h1>
+  <p>Electricity consumption overview</p>
+</header>
 
-  <main>
-    <div class="dashboard" id="dashboard"></div>
-  </main>
+<main>
 
-  <script>
-    Promise.all([
-      fetch("electricity_usages_en.json").then(res => res.json()),
-      fetch("electricity_users_en.json").then(res => res.json())
-    ])
-    .then(([usageData, userData]) => {
+  <!-- Summary cards -->
+  <section class="summary">
+    <div class="summary-card">
+      <h3>Total Provinces</h3>
+      <span id="provinceCount">0</span>
+    </div>
+    <div class="summary-card">
+      <h3>Total Usage (kWh)</h3>
+      <span id="totalUsage">0</span>
+    </div>
+  </section>
 
-      // กรณีไฟล์ usage มี key Sheet1
-      const usages = usageData.Sheet1 || usageData;
+  <!-- Charts -->
+  <section class="charts">
+    <div class="chart-card">
+      <h3>Electricity Usage by Province</h3>
+      <canvas id="usageChart"></canvas>
+    </div>
 
-      const dashboard = document.getElementById("dashboard");
+    <div class="chart-card">
+      <h3>User Distribution</h3>
+      <canvas id="userChart"></canvas>
+    </div>
+  </section>
 
-      usages.forEach(u => {
-        const user = userData.find(
-          x => x.province_code === u.province_code
-        );
+</main>
 
-        const totalUsage =
-          u.residential_kwh +
-          u.small_business_kwh +
-          u.medium_business_kwh +
-          u.large_business_kwh;
+<script>
+Promise.all([
+  fetch("electricity_usages_en.json").then(res => res.json()),
+  fetch("electricity_users_en.json").then(res => res.json())
+])
+.then(([usageData, userData]) => {
 
-        const card = document.createElement("div");
-        card.className = "card";
+  const usages = usageData.Sheet1 || usageData;
 
-        card.innerHTML = `
-          <h2>${u.province_name}</h2>
-          <p><strong>Total Usage:</strong> ${totalUsage.toLocaleString()} kWh</p>
-          <p>🏠 Residential: ${u.residential_kwh.toLocaleString()} kWh</p>
-          <p>🏪 Small Business: ${u.small_business_kwh.toLocaleString()} kWh</p>
-          <p>🏭 Large Business: ${u.large_business_kwh.toLocaleString()} kWh</p>
-          <hr>
-          <p><strong>Total Users:</strong>
-            ${user ? user.residential_count.toLocaleString() : "N/A"}
-          </p>
-        `;
+  // ===== Summary =====
+  document.getElementById("provinceCount").textContent = usages.length;
 
-        dashboard.appendChild(card);
-      });
-    })
-    .catch(err => {
-      console.error("Error loading data:", err);
-    });
-  </script>
+  const totalUsageValue = usages.reduce((sum, u) =>
+    sum + u.residential_kwh + u.small_business_kwh +
+    u.medium_business_kwh + u.large_business_kwh
+  , 0);
+
+  document.getElementById("totalUsage").textContent =
+    totalUsageValue.toLocaleString();
+
+  // ===== Bar Chart =====
+  const provinceNames = usages.map(u => u.province_name);
+  const usageTotals = usages.map(u =>
+    u.residential_kwh + u.small_business_kwh +
+    u.medium_business_kwh + u.large_business_kwh
+  );
+
+  new Chart(document.getElementById("usageChart"), {
+    type: "bar",
+    data: {
+      labels: provinceNames,
+      datasets: [{
+        label: "Total Usage (kWh)",
+        data: usageTotals
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
+
+  // ===== Pie Chart =====
+  const totalResidential = userData.reduce((s,u)=>s+u.residential_count,0);
+  const totalSmall = userData.reduce((s,u)=>s+u.small_business_count,0);
+  const totalLarge = userData.reduce((s,u)=>s+u.large_business_count,0);
+
+  new Chart(document.getElementById("userChart"), {
+    type: "pie",
+    data: {
+      labels: ["Residential", "Small Business", "Large Business"],
+      datasets: [{
+        data: [totalResidential, totalSmall, totalLarge]
+      }]
+    },
+    options: {
+      responsive: true
+    }
+  });
+
+})
+.catch(err => console.error(err));
+</script>
 
 </body>
 </html>
