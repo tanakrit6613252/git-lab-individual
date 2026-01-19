@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Electricity Usage Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h1>⚡ Electricity Usage Dashboard</h1>
+    <p>Electricity consumption and user statistics by province</p>
+  </header>
+
+  <main>
+    <div class="dashboard" id="dashboard"></div>
+  </main>
+
+  <script>
+    Promise.all([
+      fetch("electricity_usages_en.json").then(res => res.json()),
+      fetch("electricity_users_en.json").then(res => res.json())
+    ])
+    .then(([usageData, userData]) => {
+
+      // กรณีไฟล์ usage มี key Sheet1
+      const usages = usageData.Sheet1 || usageData;
+
+      const dashboard = document.getElementById("dashboard");
+
+      usages.forEach(u => {
+        const user = userData.find(
+          x => x.province_code === u.province_code
+        );
+
+        const totalUsage =
+          u.residential_kwh +
+          u.small_business_kwh +
+          u.medium_business_kwh +
+          u.large_business_kwh;
+
+        const card = document.createElement("div");
+        card.className = "card";
+
+        card.innerHTML = `
+          <h2>${u.province_name}</h2>
+          <p><strong>Total Usage:</strong> ${totalUsage.toLocaleString()} kWh</p>
+          <p>🏠 Residential: ${u.residential_kwh.toLocaleString()} kWh</p>
+          <p>🏪 Small Business: ${u.small_business_kwh.toLocaleString()} kWh</p>
+          <p>🏭 Large Business: ${u.large_business_kwh.toLocaleString()} kWh</p>
+          <hr>
+          <p><strong>Total Users:</strong>
+            ${user ? user.residential_count.toLocaleString() : "N/A"}
+          </p>
+        `;
+
+        dashboard.appendChild(card);
+      });
+    })
+    .catch(err => {
+      console.error("Error loading data:", err);
+    });
+  </script>
+
+</body>
+</html>
